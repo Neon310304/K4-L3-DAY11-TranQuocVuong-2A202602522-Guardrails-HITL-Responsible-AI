@@ -42,16 +42,42 @@ class MonitoringAlert:
     judge_fails: int = 0
 
     def check_metrics(self) -> list[Alert]:
-        """TODO: compute rates, append Alert objects when thresholds exceeded."""
-        raise NotImplementedError("Implement MonitoringAlert.check_metrics")
+        """Raise each threshold alert once, based on the current counters."""
+        snapshot = self.snapshot()
+        candidates = [
+            (
+                self.total_requests > 0 and snapshot["block_rate"] >= self.block_rate_threshold,
+                "block_rate", snapshot["block_rate"], self.block_rate_threshold,
+                "Blocked request rate reached the warning threshold.",
+            ),
+            (
+                self.rate_limit_hits >= self.rate_limit_hit_threshold,
+                "rate_limit_hits", self.rate_limit_hits, self.rate_limit_hit_threshold,
+                "Rate-limit hits reached the warning threshold.",
+            ),
+            (
+                self.judge_checks > 0 and snapshot["judge_fail_rate"] >= self.judge_fail_rate_threshold,
+                "judge_fail_rate", snapshot["judge_fail_rate"], self.judge_fail_rate_threshold,
+                "LLM judge failure rate reached the warning threshold.",
+            ),
+        ]
+        for triggered, metric, value, threshold, message in candidates:
+            if triggered and not any(alert.metric == metric for alert in self.alerts):
+                self.alerts.append(Alert(metric, value, threshold, message))
+        return self.alerts
 
     def export_json(self, filepath: str | None = None):
         """TODO: write metrics + alerts to JSON under repo-root ``outputs/`` by default.
         Use ``filepath or default_metrics_path()`` so running from ``src/`` does not
         create ``src/outputs/``.
         """
-        _ = filepath or default_metrics_path()
-        raise NotImplementedError("Implement MonitoringAlert.export_json")
+        self.check_metrics()
+        path = Path(filepath or default_metrics_path())
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(self.snapshot(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return str(path)
 
     def snapshot(self) -> dict:
         block_rate = (

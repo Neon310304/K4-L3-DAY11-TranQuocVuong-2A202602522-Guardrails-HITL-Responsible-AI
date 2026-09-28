@@ -37,6 +37,8 @@ PROVIDER_OPENROUTER = "openrouter"
 # --- Blue Team (LOCKED) ---
 BLUE_PROVIDER = PROVIDER_OPENROUTER
 BLUE_MODEL = "liquid/lfm-2.5-2.6b"
+# OpenRouter currently exposes this same model through its free route.
+BLUE_REQUEST_MODEL = f"{BLUE_MODEL}:free"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_OPENROUTER_MODEL = BLUE_MODEL  # alias
 
@@ -108,6 +110,11 @@ def get_blue_model() -> str:
     return BLUE_MODEL
 
 
+def get_blue_request_model() -> str:
+    """OpenRouter route for the fixed Blue model (free variant)."""
+    return BLUE_REQUEST_MODEL
+
+
 def get_openrouter_api_key() -> str:
     return os.environ.get("OPENROUTER_API_KEY", "").strip()
 
@@ -124,7 +131,7 @@ def blue_client_kwargs() -> dict:
 
 
 def blue_provider_label() -> str:
-    return f"{get_blue_provider()}:{get_blue_model()}"
+    return f"{get_blue_provider()}:{get_blue_request_model()}"
 
 
 # ---------------------------------------------------------------------------

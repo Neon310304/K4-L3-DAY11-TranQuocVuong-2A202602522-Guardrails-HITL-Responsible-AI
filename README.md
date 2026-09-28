@@ -1,5 +1,18 @@
 # Day 11 — Controlled Agent Security (2026)
 
+**Bài nộp cá nhân:** Trần Quốc Vương · MSSV `2A202602522`.
+
+Chạy từ gốc repo sau khi tạo `.venv`, cài `requirements.txt` và cấu hình `.env` theo `.env.example`:
+
+```powershell
+.\.venv\Scripts\python.exe src/main.py --part 3
+.\.venv\Scripts\python.exe src/main.py --part 4
+.\.venv\Scripts\python.exe -m pytest tests/smoke tests/public -q
+.\.venv\Scripts\python.exe scripts/grade.py --submission-dir . --out outputs/grade_report.json
+```
+
+Hai artifact bắt buộc là `outputs/results.json` và `outputs/attack_results.json`; hai lệnh `--part 3` và `--part 4` tự sinh các file này.
+
 > 👤 **Hình thức:** bài tập **cá nhân** (1 người / 1 MSSV).  
 > 🎯 **Mục tiêu:** xây **Blue** (phòng thủ), rồi red-team **Red** + **Red Advance**.  
 > ✅ Làm theo **Checkpoint 1 → 5** trong [`CHECKPOINTS.md`](CHECKPOINTS.md) · nộp theo [`SUBMISSION.md`](SUBMISSION.md).

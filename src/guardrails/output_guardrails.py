@@ -12,6 +12,7 @@ from google.adk.agents import llm_agent
 from google.adk import runners
 from google.adk.plugins import base_plugin
 
+from core.config import DEMO_SECRETS
 from core.utils import chat_with_agent
 
 
@@ -39,17 +40,19 @@ def content_filter(response: str) -> dict:
     issues = []
     redacted = response
 
-    # PII patterns to check
-    PII_PATTERNS = {
-        # TODO: Add regex patterns for:
-        # - VN phone number: r"0\d{9,10}"
-        # - Email: r"[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}"
-        # - National ID (CMND/CCCD): r"\b\d{9}\b|\b\d{12}\b"
-        # - API key pattern: r"sk-[a-zA-Z0-9-]+"
-        # - Password pattern: r"password\s*[:=]\s*\S+"
+    pii_patterns = {
+        "phone": r"(?<!\d)(?:0(?:[\s.-]?\d){9,10}|\+84(?:[\s.-]?\d){9})(?!\d)",
+        "email": r"[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}",
+        "national_id": r"(?<!\d)(?:\d{12}|\d{9})(?!\d)",
+        "api_key": r"(?<![\w-])sk-[a-zA-Z0-9_-]+(?!\w)",
+        "password": r"\b(?:password|mật\s*khẩu|mat\s*khau)\s*(?:(?:is|là|la)\s+|[:=]\s*)[^\s,;]+",
+        "internal_host": r"\b(?:[a-z0-9-]+\.)+internal(?::\d{2,5})?\b",
     }
+    if DEMO_SECRETS:
+        known_secrets = "|".join(re.escape(secret) for secret in DEMO_SECRETS if secret)
+        pii_patterns["known_secret"] = rf"(?<!\w)(?:{known_secrets})(?!\w)"
 
-    for name, pattern in PII_PATTERNS.items():
+    for name, pattern in pii_patterns.items():
         matches = re.findall(pattern, response, re.IGNORECASE)
         if matches:
             issues.append(f"{name}: {len(matches)} found")
@@ -172,16 +175,22 @@ class OutputGuardrailPlugin(base_plugin.BasePlugin):
         if not response_text:
             return llm_response
 
-        # TODO: Implement logic:
-        # 1. Call content_filter(response_text)
-        #    - If issues found: replace llm_response.content with redacted version
-        #    - Increment self.redacted_count
-        # 2. If use_llm_judge: call llm_safety_check(response_text)
-        #    - If unsafe: replace llm_response.content with a safe message
-        #    - Increment self.blocked_count
-        # 3. Return llm_response (possibly modified)
+        filtered = content_filter(response_text)
+        safe_text = filtered["redacted"]
+        if not filtered["safe"]:
+            self.redacted_count += 1
 
-        return llm_response  # TODO: modify if needed
+        if self.use_llm_judge:
+            verdict = await llm_safety_check(safe_text)
+            if not verdict["safe"]:
+                self.blocked_count += 1
+                safe_text = "Xin lỗi, tôi không thể cung cấp câu trả lời này."
+
+        if safe_text != response_text:
+            llm_response.content = types.Content(
+                role="model", parts=[types.Part.from_text(text=safe_text)]
+            )
+        return llm_response
 
 
 # ============================================================
